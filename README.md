@@ -33,4 +33,5 @@ Chops Blisterwood trees and drops logs when inventory is full.
 
 ## Development
 
-Scripts are built using VSCode tasks with direct javac/jar commands using JDK version 17.
+Scripts are built with direct javac/jar commands using JDK 17.
+Developed, compiled, and built on MacOS, and automatically deployed to `.osmb\Scripts` folder of remote Windows PC through CI/CD pipeline through VSCode tasks.
