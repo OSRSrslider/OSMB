@@ -168,7 +168,7 @@ public class BlisterwoodChopper extends Script {
                             newWidth,
                             newHeight);
 
-                    log(BlisterwoodChopper.class, "Clicking in center 60% of tree");
+                    log(BlisterwoodChopper.class, "Clicking in centre 60% of tree");
                     return getFinger().tap(trimmedBounds, "Chop");
                 } else {
                     log(BlisterwoodChopper.class, "Trimmed bounds too small, using full polygon");
