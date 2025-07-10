@@ -17,9 +17,9 @@ import com.osmb.api.script.Script;
 import com.osmb.api.script.ScriptDefinition;
 import com.osmb.api.script.SkillCategory;
 import com.osmb.api.shape.Polygon;
-import com.osmb.api.shape.Rectangle;
 import com.osmb.api.utils.RandomUtils;
 import com.osmb.api.utils.timing.Timer;
+import com.osmb.api.walker.WalkConfig;
 import java.util.Set;
 
 @ScriptDefinition(name = "Blisterwood Chopper", description = "Chops Blisterwood trees and drops logs when inventory is full.", version = 1.0, author = "rslider", skillCategory = SkillCategory.WOODCUTTING)
@@ -55,6 +55,10 @@ public class BlisterwoodChopper extends Script {
         // Update inventory snapshot
         inventorySnapshot = getWidgetManager().getInventory().search(Set.of(BLISTERWOOD_LOG_ID));
 
+        // Null check inventory snapshot
+        if (inventorySnapshot == null)
+            return 0;
+
         // Close any open widgets
         if (ensureWidgetsCollapsed()) {
             return 0;
@@ -64,7 +68,7 @@ public class BlisterwoodChopper extends Script {
         if (inventorySnapshot.isFull()) {
             log(BlisterwoodChopper.class, "Inventory is full, dropping logs...");
             dropAllLogs();
-            return RandomUtils.gaussianRandom(800, 2500, 1200, 400);
+            return 0;
         }
 
         // Check if we're in the chopping area
@@ -72,27 +76,26 @@ public class BlisterwoodChopper extends Script {
         if (playerPosition != null && !CHOPPING_AREA.contains(playerPosition)) {
             log(BlisterwoodChopper.class, "Not in chopping area, walking to position...");
             getWalker().walkTo(CHOPPING_AREA.getRandomPosition());
-            return RandomUtils.gaussianRandom(1200, 2800, 1800, 500);
+            return 0;
         }
 
         // Find the blisterwood tree
         RSObject blisterwoodTree = getBlisterwoodTree();
         if (blisterwoodTree == null) {
             log(BlisterwoodChopper.class, "Blisterwood tree not found! Make sure you're near the tree.");
-            return RandomUtils.gaussianRandom(2000, 4000, 2500, 600);
+            return 0;
         }
 
         // Check if we're currently chopping
-        // TODO: Might want to adjust minDifferenceFactor; not sure on best value
-        if (getPixelAnalyzer().isPlayerAnimating(0.3)) {
+        if (getPixelAnalyzer().isPlayerAnimating(0.4)) {
             log(BlisterwoodChopper.class, "Currently chopping, waiting...");
             waitUntilFinishedChopping();
             return 0;
         }
 
-        // We're not chopping, click the tree randomly within its bounds
+        // We're not chopping, click the tree
         log(BlisterwoodChopper.class, "Clicking blisterwood tree...");
-        if (clickTreeRandomly(blisterwoodTree)) {
+        if (clickTree(blisterwoodTree)) {
             // Small delay after clicking before starting monitoring (like other scripts)
             int clickDelay = RandomUtils.gaussianRandom(800, 1500, 1000, 200);
             submitTask(() -> {
@@ -102,7 +105,7 @@ public class BlisterwoodChopper extends Script {
             return 0;
         }
 
-        return RandomUtils.gaussianRandom(400, 1200, 600, 200);
+        return 0;
     }
 
     private boolean ensureWidgetsCollapsed() {
@@ -144,45 +147,26 @@ public class BlisterwoodChopper extends Script {
         return tree;
     }
 
-    private boolean clickTreeRandomly(RSObject tree) {
-        // Get the tree's visual bounds (polygon)
+    private boolean clickTree(RSObject tree) {
+        // Get convex hull of the tree
         Polygon treePolygon = tree.getConvexHull();
 
-        if (treePolygon != null) {
-            // Get bounding rectangle of the polygon
-            Rectangle bounds = treePolygon.getBounds();
-
-            if (bounds != null) {
-                // Apply 20% trim like OSMB/Davyy's approach for more human-like clicking
-                int trimX = (int) (bounds.width * 0.2);
-                int trimY = (int) (bounds.height * 0.2);
-
-                // Ensure trimmed area is still valid
-                int newWidth = bounds.width - (trimX * 2);
-                int newHeight = bounds.height - (trimY * 2);
-
-                if (newWidth > 0 && newHeight > 0) {
-                    Rectangle trimmedBounds = new Rectangle(
-                            bounds.x + trimX,
-                            bounds.y + trimY,
-                            newWidth,
-                            newHeight);
-
-                    log(BlisterwoodChopper.class, "Clicking in centre 60% of tree");
-                    return getFinger().tap(trimmedBounds, "Chop");
-                } else {
-                    log(BlisterwoodChopper.class, "Trimmed bounds too small, using full polygon");
-                    return getFinger().tap(treePolygon, "Chop");
-                }
-            } else {
-                log(BlisterwoodChopper.class, "No bounding rectangle, using polygon");
-                return getFinger().tap(treePolygon, "Chop");
-            }
-        } else {
-            // Fall back to regular interact if no polygon is available
-            log(BlisterwoodChopper.class, "No tree polygon found, using regular interact");
-            return tree.interact("Chop");
+        // If the polygon is null return, if not null resize it to 60% of its original
+        // size from the center & then check if that is null also
+        if (treePolygon == null || (treePolygon = treePolygon.getResized(0.6)) == null) {
+            // Walk to tree
+            walkToTree(tree);
+            return false;
         }
+        // Tap the resized polygon
+        return getFinger().tap(treePolygon, "Chop");
+    }
+
+    private void walkToTree(RSObject tree) {
+        WalkConfig.Builder walkConfig = new WalkConfig.Builder();
+        // Break out of the walking method when the tree is interactable on screen
+        walkConfig.breakCondition(tree::isInteractableOnScreen);
+        getWalker().walkTo(tree, walkConfig.build());
     }
 
     private void waitUntilFinishedChopping() {
@@ -197,13 +181,12 @@ public class BlisterwoodChopper extends Script {
                 log(BlisterwoodChopper.class, "Animation timeout - finished chopping");
                 this.choppingTimeout = RandomUtils.gaussianRandom(2500, 7500, 5000, 1200);
                 log(BlisterwoodChopper.class,
-                        "Next chopping timeout: " + choppingTimeout + "ms (gaussian distributed)");
+                        "Next chopping timeout: " + choppingTimeout + "ms");
                 return true;
             }
 
             // Reset timer every time we detect chopping animation (like mining scripts)
-            // TODO: Might want to adjust minDifferenceFactor; not sure on best value
-            if (getPixelAnalyzer().isPlayerAnimating(0.3)) {
+            if (getPixelAnalyzer().isPlayerAnimating(0.4)) {
                 animatingTimer.reset(); // Keep resetting while actively chopping
             }
 
@@ -213,10 +196,7 @@ public class BlisterwoodChopper extends Script {
 
     @Override
     public int[] regionsToPrioritise() {
-        // TODO: I need to get more familiar with the debug tool. I really don't know if
-        // these values are correct.
-        // Blisterwood tree regions (from debug: 14131, 14132, 14133, 14387, 14388,
-        // 14389, 14643, 14644, 14645)
-        return new int[] { 14388 }; // I legit just picked the middle value
+
+        return new int[] { 14388 };
     }
 }

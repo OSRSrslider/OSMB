@@ -25,9 +25,9 @@ Chops Blisterwood trees and drops logs when inventory is full.
 
 **Technical Details:**
 
-- **Version:** 1.0
+- **Version:** 1.1
 - **Author:** rslider
-- **Date:** 2025-07-08
+- **Date:** 2025-07-10
 - **Skill Category:** Woodcutting
 - **Dependencies:** OSMB API (`../API.jar`)
 
