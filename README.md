@@ -18,7 +18,7 @@ Chops Blisterwood trees and drops logs when inventory is full.
 
 **Setup:**
 
-1. Place the .JAR file into your `%USERPROFILE%\\.osmb\Scripts\` folder
+1. Place the .JAR file into your `%USERPROFILE%\.osmb\Scripts\` folder
 2. Select BlisterwoodChopper in OSMB
 3. Position your character near the Blisterwood tree in Darkmeyer
 4. Run the script
