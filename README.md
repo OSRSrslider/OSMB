@@ -14,7 +14,7 @@ Chops Blisterwood trees and drops logs when inventory is full.
 - Drops logs when inventory is full
 - An attempt at animation timeouts for tree chopping detection
 - An attempt at some humanization
-- Ignorantly sprinked gaussian-influenced randomnness (probably better than ignorantly sprinkled regular randomness)
+- Ignorantly sprinked gaussian-influenced randomness (probably better than ignorantly sprinkled regular randomness)
 
 **Setup:**
 
